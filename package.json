@@ -1,0 +1,32 @@
+{
+  "name": "xueyan-parent",
+  "version": "1.0.0",
+  "description": "学研在线 - 在线教育平台 一键管理脚本",
+  "scripts": {
+    "infra:up": "docker-compose up -d",
+    "infra:down": "docker-compose down",
+    "infra:restart": "docker-compose restart",
+    "infra:status": "docker-compose ps",
+    "infra:clean": "docker-compose down -v",
+    "mysql:cli": "docker exec -it xueyan-mysql mysql -uroot -p123456",
+    "rabbitmq:ui": "start http://localhost:15672",
+    "nacos:ui": "start http://localhost:8848/nacos",
+    "doc:ui": "start http://localhost:8080/doc.html",
+    "mvn:clean": "mvn clean",
+    "mvn:compile": "mvn clean compile -DskipTests",
+    "mvn:install": "mvn clean install -DskipTests",
+    "dev:gateway": "start \"xueyan-gateway\" cmd /c \"mvn -f ./xueyan-gateway spring-boot:run\"",
+    "dev:user": "start \"xueyan-user\" cmd /c \"mvn -f ./xueyan-user spring-boot:run\"",
+    "dev:course": "start \"xueyan-course\" cmd /c \"mvn -f ./xueyan-course spring-boot:run\"",
+    "dev:order": "start \"xueyan-order\" cmd /c \"mvn -f ./xueyan-order spring-boot:run\"",
+    "dev:payment": "start \"xueyan-payment\" cmd /c \"mvn -f ./xueyan-payment spring-boot:run\"",
+    "dev:all": "start \"xueyan-gateway\" cmd /c \"mvn -f ./xueyan-gateway spring-boot:run\" & start \"xueyan-user\" cmd /c \"mvn -f ./xueyan-user spring-boot:run\" & start \"xueyan-course\" cmd /c \"mvn -f ./xueyan-course spring-boot:run\" & start \"xueyan-order\" cmd /c \"mvn -f ./xueyan-order spring-boot:run\" & start \"xueyan-payment\" cmd /c \"mvn -f ./xueyan-payment spring-boot:run\"",
+    "dev:stop": "taskkill /fi \"WINDOWTITLE eq xueyan-*\" /t",
+    "web:install": "cd xueyan-web && npm install",
+    "web:dev": "cd xueyan-web && npm run dev",
+    "web:build": "cd xueyan-web && npm run build",
+    "start:full": "npm run infra:up && npm run dev:all && npm run web:dev"
+  },
+  "keywords": ["spring-cloud", "microservices"],
+  "license": "MIT"
+}

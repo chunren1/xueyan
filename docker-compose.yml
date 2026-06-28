@@ -1,0 +1,123 @@
+# ========================================================
+# 学研在线 — 中间件容器化部署
+# docker-compose up -d         启动所有中间件
+# docker-compose down          停止并删除
+# docker-compose logs -f mysql 查看 MySQL 日志
+# ========================================================
+
+services:
+
+  # ==================== MySQL 8.0 ====================
+  mysql:
+    image: mysql:8.0
+    container_name: xueyan-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      # 首次启动时自动执行 SQL 初始化脚本（仅数据目录为空时执行）
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./sql/seata.sql:/docker-entrypoint-initdb.d/02-seata.sql
+      # 持久化数据
+      - xueyan-mysql-data:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-time-zone=+08:00
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ==================== Redis 7 ====================
+  redis:
+    image: redis:7-alpine
+    container_name: xueyan-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - xueyan-redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ==================== RabbitMQ 3.12（含管理面板） ====================
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: xueyan-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"     # AMQP 协议端口
+      - "15672:15672"   # 管理面板端口
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - xueyan-rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ==================== Nacos 2.3（单机模式） ====================
+  nacos:
+    image: nacos/nacos-server:v2.3.0
+    container_name: xueyan-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      PREFER_HOST_MODE: hostname
+      # 使用内嵌 Derby 数据库（原型足够，生产切换 MySQL）
+    ports:
+      - "8848:8848"     # HTTP 端口
+      - "9848:9848"     # gRPC 端口（客户端通信）
+      - "9849:9849"     # gRPC 端口（服务端通信）
+    volumes:
+      - xueyan-nacos-data:/home/nacos/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8848/nacos/v1/console/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  # ==================== Seata Server 1.8 ====================
+  seata:
+    image: seataio/seata-server:1.8.0
+    container_name: xueyan-seata
+    restart: unless-stopped
+    ports:
+      - "8091:8091"     # Seata 服务端口
+      - "7091:7091"     # Seata 控制台端口
+    environment:
+      SEATA_IP: seata
+      SEATA_PORT: 8091
+    volumes:
+      # 挂载自定义 registry.conf（注册到 Nacos）
+      - ./docker/seata/registry.conf:/seata-server/resources/registry.conf
+    depends_on:
+      nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:7091 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+# ==================== 数据卷持久化 ====================
+volumes:
+  xueyan-mysql-data:
+  xueyan-redis-data:
+  xueyan-rabbitmq-data:
+  xueyan-nacos-data:

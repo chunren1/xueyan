@@ -1,0 +1,53 @@
+# ========================================================
+# xueyan-gateway 网关服务 — 应用配置
+# ========================================================
+server:
+  port: ${GATEWAY_SERVER_PORT:8080}
+
+spring:
+  main:
+    web-application-type: reactive
+  cloud:
+    nacos:
+      discovery:
+        enabled: true
+  config:
+    import: optional:nacos:xueyan-gateway.yaml
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true           # 自动从 Nacos 发现服务并创建路由
+          lower-case-service-id: true
+      routes:
+        # ========== 用户服务 ==========
+        - id: xueyan-user
+          uri: lb://xueyan-user
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1         # 去掉 /api 前缀后转发
+
+        # ========== 课程服务 ==========
+        - id: xueyan-course
+          uri: lb://xueyan-course
+          predicates:
+            - Path=/api/course/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 订单服务 ==========
+        - id: xueyan-order
+          uri: lb://xueyan-order
+          predicates:
+            - Path=/api/order/**
+          filters:
+            - StripPrefix=1
+
+        # ========== 支付服务 ==========
+        - id: xueyan-payment
+          uri: lb://xueyan-payment
+          predicates:
+            - Path=/api/payment/**
+          filters:
+            - StripPrefix=1
